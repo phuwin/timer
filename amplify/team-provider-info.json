@@ -1,0 +1,20 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-workouttimer-dev-111344-authRole",
+      "UnauthRoleArn": "arn:aws:iam::994206165806:role/amplify-workouttimer-dev-111344-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::994206165806:role/amplify-workouttimer-dev-111344-authRole",
+      "Region": "eu-west-1",
+      "DeploymentBucketName": "amplify-workouttimer-dev-111344-deployment",
+      "UnauthRoleName": "amplify-workouttimer-dev-111344-unauthRole",
+      "StackName": "amplify-workouttimer-dev-111344",
+      "StackId": "arn:aws:cloudformation:eu-west-1:994206165806:stack/amplify-workouttimer-dev-111344/56bfc410-9cf9-11eb-87ee-0209ec2e0047",
+      "AmplifyAppId": "d26urwrk5xamaw"
+    },
+    "categories": {
+      "auth": {
+        "workouttimera056f9b1": {}
+      }
+    }
+  }
+}

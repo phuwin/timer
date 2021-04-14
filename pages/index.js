@@ -1,65 +1,95 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import { useState, useEffect } from 'react';
+import { API, graphqlOperation, Auth } from 'aws-amplify';
+import { withAuthenticator, AmplifySignOut } from '@aws-amplify/ui-react';
+import UserInfo from '../components/UserInfo.tsx';
+import NewTimer from '../components/NewTimer.tsx';
+import { timersByUsername } from '../src/graphql/queries';
+import { deleteTimer, createTimer } from '../src/graphql/mutations';
+import { onCreateTimer, onDeleteTimer } from '../src/graphql/subscriptions';
+import Timer from '../components/Timer.tsx';
 
-export default function Home() {
+function Home() {
+  const [timers, setTimers] = useState([]);
+  const [activeDuration, setActiveDuration] = useState(-1);
+
+  const [user, setUser] = useState(null);
+
+  const fetchTimers = async () => {
+    if (user) {
+      const timerData = await API.graphql({
+        query: timersByUsername,
+        variables: { username: user.username },
+      });
+      setTimers(timerData.data.timersByUsername.items);
+    }
+  };
+
+  useEffect(fetchTimers, [user]);
+
+  useEffect(async () => {
+    const authenticatedUser = await Auth.currentAuthenticatedUser();
+    setUser(authenticatedUser);
+    const onCreateSub = API.graphql(
+      graphqlOperation(onCreateTimer, { username: authenticatedUser.username }),
+    );
+    onCreateSub.subscribe({
+      next: fetchTimers,
+    });
+    const onDeleteSub = API.graphql(
+      graphqlOperation(onDeleteTimer, { username: authenticatedUser.username }),
+    );
+    onDeleteSub.subscribe({
+      next: fetchTimers,
+    });
+    return () => {
+      onDeleteSub.unsubscribe();
+      onCreateSub.unsubscribe();
+    };
+  }, []);
+
+  const removeTimer = ({ id }) => {
+    API.graphql({
+      query: deleteTimer,
+      variables: { input: { id } },
+      // @ts-ignore
+      authMode: 'AMAZON_COGNITO_USER_POOLS',
+    });
+  };
+  if (!user) return null;
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+    <div>
+      <UserInfo username={user.username} />
+      <Timer activeDuration={activeDuration} />
+      <h1 className="text-3xl font-semibold tracking-wide mt-6 mb-2">Timers</h1>
+      {
+        timers.map((timer) => (
+          <div key={timer.id} className="flex justify-between border-b border-gray-300 mt-8 pb-4">
+            <span className="text-xl font-semibold">
+              {`${timer.name} (${timer.duration / 1000}s)`}
+            </span>
+            <div className="space-x-4">
+              <button
+                onClick={() => { setActiveDuration(timer.duration); }}
+                type="button"
+                className="mb-4 bg-green-400 text-white font-semibold px-8 py-2"
+              >
+                Start
+              </button>
+              <button
+                onClick={() => { removeTimer(timer); }}
+                type="button"
+                className="mb-4 bg-red-400 text-white font-semibold px-8 py-2"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))
+      }
+      <NewTimer createTimer={createTimer} />
+      <AmplifySignOut />
     </div>
-  )
+  );
 }
+
+export default withAuthenticator(Home);

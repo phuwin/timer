@@ -1,0 +1,11 @@
+type Timer @model
+  @key(name: "timersByUsername", fields: ["username"], queryField: "timersByUsername")
+  @auth(rules: [
+    { allow: owner, ownerField: "username" },
+  ]) {
+  id: ID!
+  name: String!
+  duration: Int!
+  description: String
+  username: String
+}
